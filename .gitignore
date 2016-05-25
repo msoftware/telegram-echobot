@@ -2,3 +2,4 @@ vendor/
 inc/config.php
 composer.phar
 start.php
+logs/echobot.log
