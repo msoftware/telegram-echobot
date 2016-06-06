@@ -1,7 +1,8 @@
 {
     "require": {
         "irazasyed/telegram-bot-sdk": "^2.0",
-        "piwik/piwik-php-tracker": "1.0.*",
-        "monolog/monolog": "^1.19"
+        "piwik/piwik-php-tracker": "^1.0",
+        "monolog/monolog": "^1.19",
+        "msoftware/session-library": "^1.2.0"
     }
 }

@@ -3,3 +3,7 @@ inc/config.php
 composer.phar
 start.php
 logs/echobot.log
+composer.lock
+debug.php
+TODO
+logs/echobot*
