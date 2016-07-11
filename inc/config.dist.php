@@ -6,6 +6,10 @@ define ("TOKEN", "Enter your token here");
 /* Your piwik Site id */
 define ("SITE_ID", "Enter your piwik site here");
 
+/* Your piwik url */
+define ("PIWIK_URL" ,'Enter your piwik url here');
+
+
 /* Delay after main loop error in sec. */
 define ("ERROR_DELAY", 30);
 

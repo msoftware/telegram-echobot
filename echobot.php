@@ -8,7 +8,7 @@ use Monolog\Logger;
 use Monolog\Handler\RotatingFileHandler;
 use Session\SessionContainer;
 
-PiwikTracker::$URL = 'http://piwik.1br.de/';
+PiwikTracker::$URL = PIWIK_URL;
 $telegram = new Api(BOT_TOKEN);
 $piwikTracker = new PiwikTracker( $idSite = SITE_ID );
 $sessions = SessionContainer::getInstance ();

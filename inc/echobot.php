@@ -15,6 +15,75 @@ class EchoBot {
 		$this->sessions = $sessions;
 	} 
 
+	function handleStartMessage ($session, $chatId)
+	{
+		$this->log->debug ("Start command executed");
+		$msg = "Hi, ich kann ein Echo Deiner Nachrichten senden.\r\n" .
+			   "Über das Kommando /delay kannst Du Echos verzögern.\r\n" .
+			   "Am besten Du probierst es direkt mal aus - ich freue mich schon.";
+		$response = $this->sendMessage ($chatId, $msg);
+		$session->set ("TASK",0);
+		return $response;
+	}
+
+	function handleInfoMessage ($session, $chatId)
+	{
+		$delay = $this->getDelay ($chatId);
+		$this->log->debug ("Info command executed (delay=" . $delay . ")");
+		if ($delay == -1)
+		{
+			$msg = "Deine Echos sind noch ohne Verzögerung.\r\n" .
+				   "Mit dem Kommando /delay kannst Du die Verzögerung einstellen.";
+		} else {
+			$msg = "Deine Verzögerung beträgt " . $delay . " Minuten.";
+		}
+		$response = $this->sendMessage ($chatId, $msg);
+		$session->set ("TASK",0);
+		return $response;
+	}
+				
+	function handleDelayMessage ($session, $chatId)
+	{
+		$this->log->debug ("Delay command started");
+		$msg = "Wähle die Verzögerung des Echos.";
+		$keyboard = $this->getDelayOptionsKeyboard ();
+		$response = $this->sendOptionsMessage ($chatId, $msg, $keyboard);
+		$session->set ("TASK",1);
+		return $response;
+	}
+
+	function handleTextMessage ($session, $chatId, $messageText)
+	{
+		if ($session->get ("TASK") == 1)
+		{
+			$this->log->debug ("Set delay to " . $messageText);
+			$delay = $this->parseDelay ($messageText);
+			if ($delay > -1)
+			{
+				$this->setDelay($chatId, $delay);
+				$msg = "Du hast die Echo Verzögerung auf " . $delay . " " .
+					   "Min. gesetzt.\r\nAlle Nachrichten werden nun mit " .
+					   "einer Verzögerung von " . $delay . " Minuten " .
+					   "beantwortet.\r\nDu kannst die Verzögerung jederzeit " .
+					   "mit dem Befehl /delay ändern.";
+				$response = $this->sendMessage ($chatId, $msg);
+				$session->set ("TASK",0);
+			} else {
+				$keyboard = $this->getDelayOptionsKeyboard ();
+				$msg = "Entschuldigung, aber ich habe Deine Eingabe nicht " .
+					   "verstanden. Bitte versuche es noch einmal.";
+				$response = $this->sendOptionsMessage ($chatId, $msg, $keyboard);
+				$session->set ("TASK",1);
+		 	}
+		} else {
+			$this->log->debug ("Add message to echo list " . $messageText);
+			$this->addMessage ($chatId, $messageText);
+			$session->set ("TASK",0);
+			$response = null;
+		}
+		return $response;
+	}
+
 	function handleMessage ($message)
 	{
 		$messageId = $message->getMessageId();
@@ -22,64 +91,21 @@ class EchoBot {
 		$session = $this->sessions->getSession($chatId, SESSION_TIMEOUT); // chatIt == sessionId
 		$messageText = $message->getText();
 		$this->piwikTracker->setUserId($chatId);
-		$this->piwikTracker->doTrackEvent("Messages","incomingMessageUpdate",$messageText);
+		$this->piwikTracker->doTrackEvent("Messages","incomingMessage",$messageText);
 		$this->log->debug ("getMessage: text=" . $messageText);
 		switch ($messageText)
 		{
 			case "/start":
-				$this->log->debug ("Start command executed");
-				$msg = "Hi, ich kann dir ein Echo Deiner Nachricht senden.\r\n" .
-					   "Über das Kommando /delay kannst Du das Echo zeitlich verzögern.\r\n" .
-					   "Am besten du probierst es direkt mal aus - ich freue mich schon.";
-				$response = $this->sendMessage ($chatId, $msg);
-				$session->set ("TASK",0);
+				$response = $this->handleStartMessage ($session, $chatId);
 				break;
 			case "/info":
-				$delay = $this->getDelay ($chatId);
-				$this->log->debug ("Info command executed (delay=" . $delay . ")");
-				if ($delay == -1)
-				{
-					$msg = "Dein Echo hat noch keine Verzögerung.\r\n" .
-						   "Über das Kommando /delay kannst Du die Verzögerung einstellen.";
-				} else {
-					$msg = "Deine Verzögerung beträgt " . $delay . " Minuten.";
-				}
-				$response = $this->sendMessage ($chatId, $msg);
-				$session->set ("TASK",0);
+				$response = $this->handleInfoMessage ($session, $chatId);
 				break;
 			case "/delay":
-				$this->log->debug ("Delay command started");
-				$msg = "Wähle die Verzögerung des Echos.";
-				$keyboard = $this->getDelayOptionsKeyboard ();
-				$this->sendOptionsMessage ($chatId, $msg, $keyboard);
-				$session->set ("TASK",1);
+				$response = $this->handleDelayMessage ($session, $chatId);
 				break;
 			default:
-				if ($session->get ("TASK") == 1)
-				{
-					$this->log->debug ("Set delay to " . $messageText);
-					$delay = $this->parseDelay ($messageText);
-					if ($delay > -1)
-					{
-						$this->setDelay($chatId, $delay);
-						$msg = "Du hast deine Echo Verzögerung auf " . $delay . " Min. eingestellt.\r\n" .
-							   "Alle Nachrichten die du mir schickst werden nun mit einer Verzögerung von " .
-							   $delay . " Minuten beantwortet.\r\n" .
-							   "Du kannst die Verzögerung jederzeit mit dem Befehl /delay ändern.";
-						$this->sendMessage ($chatId, $msg);
-						$session->set ("TASK",0);
-					} else {
-						$keyboard = $this->getDelayOptionsKeyboard ();
-						$msg = "Entschuldigung,\r\n" .
-							   "aber ich habe Deine Eingabe nicht verstanden. Bitte versuche es noch einmal.";
-						$this->sendOptionsMessage ($chatId, $msg, $keyboard);
-						$session->set ("TASK",1);
-				 	}
-				} else {
-					$this->log->debug ("Add message to echo list " . $messageText);
-					$this->addMessage ($chatId, $messageText);
-					$session->set ("TASK",0);
-				}
+				$response = $this->handleTextMessage ($session, $chatId, $messageText);
 				break;
 		}
 	}
